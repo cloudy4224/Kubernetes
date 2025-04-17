@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: python-mysql-datadog-pod
+  labels:
+    app: python-mysql-datadog
+spec:
+  containers:
+    - name: python
+      image: python:latest
+      command: ["sleep"]
+      args: ["infinity"]
+      volumeMounts:
+        - name: shared-data
+          mountPath: /data
+      stdin: true
+      tty: true
+
+    - name: mysql
+      image: mysql:8.0
+      env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: rootpass
+        - name: MYSQL_DATABASE
+          value: testdb
+        - name: MYSQL_USER
+          value: testuser
+        - name: MYSQL_PASSWORD
+          value: testpass
+      ports:
+        - containerPort: 3306
+      volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+
+    - name: datadog-agent
+      image: gcr.io/datadoghq/agent:7
+      env:
+        - name: DD_API_KEY
+          value: ""  # <- insert your API key here
+        - name: DD_SITE
+          value: "us5.datadoghq.com"
+        - name: DD_DOGSTATSD_NON_LOCAL_TRAFFIC
+          value: "true"
+      volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+          readOnly: true
+        - name: proc
+          mountPath: /host/proc
+          readOnly: true
+        - name: cgroup
+          mountPath: /host/sys/fs/cgroup
+          readOnly: true
+        - name: docker-containers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+
+  volumes:
+    - name: mysql-data
+      emptyDir: {}
+    - name: shared-data
+      emptyDir: {}
+    - name: docker-sock
+      hostPath:
+        path: /var/run/docker.sock
+    - name: proc
+      hostPath:
+        path: /proc
+    - name: cgroup
+      hostPath:
+        path: /sys/fs/cgroup
+    - name: docker-containers
+      hostPath:
+        path: /var/lib/docker/containers
